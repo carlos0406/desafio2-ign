@@ -23,35 +23,54 @@ const CartContext = createContext<CartContextData>({} as CartContextData);
 
 export function CartProvider({ children }: CartProviderProps): JSX.Element {
   const [cart, setCart] = useState<Product[]>(() => {
-    // const storagedCart = Buscar dados do localStorage
+     const storagedCart = localStorage.getItem('@RocketShoes:cart')
 
-    // if (storagedCart) {
-    //   return JSON.parse(storagedCart);
-    // }
-
+    if (storagedCart) {
+      return JSON.parse(storagedCart);
+    }
     return [];
   });
 
+  
   const addProduct = async (productId: number) => {
     try {
-      // TODO
+      const cartProduct = cart.find(p => p.id === productId);
+      const stock=await api.get(`/stock/${productId}`);
+      const stockAmount = stock.data.amount
+      const cartAmout=(cartProduct?cartProduct.amount:0)+1
+      
+      if(cartAmout>stockAmount){
+        toast.error('Quantidade solicitada fora de estoque');
+        return
+      }
+      if(cartProduct){
+        setCart(cart.map(p => p.id === productId ? { ...p, amount:cartAmout } : p));
+      }
+      if(!cartProduct){
+        const {data}=await api.get(`/products/${productId}`)
+        setCart([...cart,{...data,amount:1}])
+      }
+      localStorage.setItem('@RocketShoes:cart', JSON.stringify(cart));
     } catch {
-      // TODO
+      toast.error('Erro na adição do produto');
     }
   };
 
   const removeProduct = (productId: number) => {
+    const newCart = [...cart.filter(product => product.id !== productId)];
     try {
-      // TODO
+      if(newCart.length===cart.length){
+        throw new Error()
+      }else{
+        setCart(newCart);
+        localStorage.setItem('@RocketShoes:cart', JSON.stringify(newCart));
+      }
     } catch {
-      // TODO
+      toast.error('Erro na remoção do produto');
     }
   };
 
-  const updateProductAmount = async ({
-    productId,
-    amount,
-  }: UpdateProductAmount) => {
+  const updateProductAmount = async ({productId,amount,}: UpdateProductAmount) => {
     try {
       // TODO
     } catch {
